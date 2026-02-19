@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WeekStatus {
+  planning
+  ordering
+  received
+  closed
+}
+
+enum SupplierType {
+  WHOLESALER
+  FARMGATE
+  FARM_ORDER
+}
+
+enum ItemStatus {
+  planned
+  ordered
+  received
+  stocked
+}
+
+enum Unit {
+  kg
+  ea
+  box
+  bunch
+  punnet
+  litre
+}
+
+model Week {
+  id                     String     @id @default(cuid())
+  weekStartDate          DateTime   @unique
+  openingStockValueCents Int        @default(0)
+  closingStockValueCents Int?
+  totalTakingsCents      Int        @default(0)
+  wasteValueCents        Int        @default(0)
+  status                 WeekStatus @default(planning)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+  weekItems              WeekItem[]
+}
+
+model Supplier {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  type      SupplierType
+  active    Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  weekItems WeekItem[]
+}
+
+model Item {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  defaultUnit Unit
+  active      Boolean    @default(true)
+  category    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  weekItems   WeekItem[]
+}
+
+model WeekItem {
+  id                  String     @id @default(cuid())
+  weekId              String
+  supplierId          String
+  itemId              String
+  plannedQty          Decimal?   @db.Decimal(10, 2)
+  plannedUnit         Unit?
+  orderedQty          Decimal?   @db.Decimal(10, 2)
+  orderedUnit         Unit?
+  pricePerUnitCents   Int?
+  receivedQty         Decimal?   @db.Decimal(10, 2)
+  receivedUnit        Unit?
+  actualUnitCostCents Int?
+  wasteQty            Decimal?   @db.Decimal(10, 2)
+  wasteUnit           Unit?
+  status              ItemStatus @default(planned)
+  sortOrder           Int        @default(0)
+  notes               String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  week     Week     @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  item     Item     @relation(fields: [itemId], references: [id])
+
+  @@index([weekId, supplierId, sortOrder])
+}
